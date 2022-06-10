@@ -108,163 +108,155 @@ code segment para 'code'
 			RET
     main ENDP
         
-    move_ball proc near                         ;proccess the movement of the ball
-       
-;	   	move the ball horizontally
-		mov ax,ball_velocity_x      
-        add ball_x,ax							
+ MOVE_BALL PROC NEAR                  ;proccess the movement of the ball
+        
+;       Move the ball horizontally
+        MOV AX,BALL_VELOCITY_X    
+        ADD BALL_X,AX                   
+        
+;       Check if the ball has passed the left boundarie (BALL_X < 0 + WINDOW_BOUNDS)
+;       If is colliding, restart its position       
+        MOV AX,WINDOW_BOUNDS
+        CMP BALL_X,AX                    ;BALL_X is compared with the left boundarie of the screen (0 + WINDOW_BOUNDS)          
+        JL GIVE_POINT_TO_PLAYER_TWO      ;if is less, give one point to the player two and reset ball position
+        
+;       Check if the ball has passed the right boundarie (BALL_X > WINDOW_WIDTH - BALL_SIZE  - WINDOW_BOUNDS)
+;       If is colliding, restart its position       
+        MOV AX,WINDOW_WIDTH
+        SUB AX,BALL_SIZE
+        SUB AX,WINDOW_BOUNDS
+        CMP BALL_X,AX                   ;BALL_X is compared with the right boundarie of the screen (BALL_X > WINDOW_WIDTH - BALL_SIZE  - WINDOW_BOUNDS)  
+        JG GIVE_POINT_TO_PLAYER_ONE     ;if is greater, give one point to the player one and reset ball position
+        JMP MOVE_BALL_VERTICALLY
+        
+        GIVE_POINT_TO_PLAYER_ONE:        ;give one point to the player one and reset ball position
+            INC PLAYER_ONE_POINTS       ;increment player one points
+            CALL RESET_BALL_POSITION     ;reset ball position to the center of the screen
+            
+            CALL UPDATE_TEXT_PLAYER_ONE_POINTS ;update the text of the player one points
+            
+            CMP PLAYER_ONE_POINTS,05h   ;check if this player has reached 5 points
+            JGE GAME_OVER                ;if this player points is 5 or more, the game is over
+            RET
+        
+        GIVE_POINT_TO_PLAYER_TWO:        ;give one point to the player two and reset ball position
+            INC PLAYER_TWO_POINTS      ;increment player two points
+            CALL RESET_BALL_POSITION     ;reset ball position to the center of the screen
+            
+            CALL UPDATE_TEXT_PLAYER_TWO_POINTS ;update the text of the player two points
+            
+            CMP PLAYER_TWO_POINTS,05h  ;check if this player has reached 5 points
+            JGE GAME_OVER                ;if this player points is 5 or more, the game is over
+            RET
+            
+        GAME_OVER:                       ;someone has reached 5 points
+            CMP PLAYER_ONE_POINTS,05h    ;check wich player has 5 or more points
+            JNL WINNER_IS_PLAYER_ONE     ;if the player one has not less than 5 points is the winner
+            JMP WINNER_IS_PLAYER_TWO     ;if not then player two is the winner
+            
+            WINNER_IS_PLAYER_ONE:
+                MOV WINNER_INDEX,01h     ;update the winner index with the player one index
+                JMP CONTINUE_GAME_OVER
+            WINNER_IS_PLAYER_TWO:
+                MOV WINNER_INDEX,02h     ;update the winner index with the player two index
+                JMP CONTINUE_GAME_OVER
+                
+            CONTINUE_GAME_OVER:
+                MOV PLAYER_ONE_POINTS,00h   ;restart player one points
+                MOV PLAYER_TWO_POINTS,00h  ;restart player two points
+                CALL UPDATE_TEXT_PLAYER_ONE_POINTS
+                CALL UPDATE_TEXT_PLAYER_TWO_POINTS
+                MOV GAME_ACTIVE,00h            ;stops the game
+                RET 
 
-;       check if the ball has passed the left boundarie	
-;		if is colliding, restart its position
-		mov ax,ball_x
-		cmp ax,window_bounds 					;ball_x is compared with the left boundarie of the screen
-		jl give_point_to_player_two				;if it is less, give one point to player 2 and reset position
-		
-;       check if the ball has passed the right boundarie	
-;		if is colliding, restart its position
-		mov ax,window_width    	
-	    sub ax,ball_size
-		sub ax,window_bounds
-		cmp ball_x,ax 							;ball_x is compared with the right boundarie of the screen
-		jg give_point_to_player_one				;if it is greater, give one point to player 1 and reset position
-		jmp move_ball_vertically
-		
-		give_point_to_player_one:				;give one point to player 1 and reset position
-			inc player_one_points				;player_one_points ++
-			call reset_ball_position   			;reset ball position to the center of the screen
-			
-			call update_text_player_one_points	;update the text of the player one points
-			
-			cmp player_one_points,05h			;check if this player has reached 5 points
-			jge game_over
-			ret
-		give_point_to_player_two:				;give one point to player 2 and reset position
-			inc player_two_points				;player_two_points ++
-			call reset_ball_position   			;reset ball position to the center of the screen
-			
-			call update_text_player_two_points  ;update the text of the player two points
-			
-			cmp player_two_points,05h			;check if this player has reached 5 points
-			jge game_over
-			ret
-		
-		game_over:								;someone has reached 5 points
-			CMP player_one_points, 05h			;check which player won the game so it can print his name in the game over screen
-			JNL WINNER_IS_PLAYER_ONE
-			JMP WINNER_IS_PLAYER_TWO
-			
-			WINNER_IS_PLAYER_ONE:
-				MOV WINNER_INDEX, 01h
-				JMP CONTINUE_GAME_OVER
-			WINNER_IS_PLAYER_TWO:
-				MOV WINNER_INDEX, 02h
-				JMP CONTINUE_GAME_OVER
-			
-			CONTINUE_GAME_OVER:
-			
-				mov player_one_points,00h			;restart player one points
-				mov player_two_points,00h			;restart player two points
-				call update_text_player_one_points  ;update the change on the screen
-				call update_text_player_two_points  ;update the change on the screen
-				mov GAME_ACTIVE, 00h				; stop the game
-				RET
+;       Move the ball vertically        
+        MOVE_BALL_VERTICALLY:       
+            MOV AX,BALL_VELOCITY_Y
+            ADD BALL_Y,AX             
+        
+;       Check if the ball has passed the top boundarie (BALL_Y < 0 + WINDOW_BOUNDS)
+;       If is colliding, reverse the velocity in Y
+        MOV AX,WINDOW_BOUNDS
+        CMP BALL_Y,AX                    ;BALL_Y is compared with the top boundarie of the screen (0 + WINDOW_BOUNDS)
+        JL NEG_VELOCITY_Y                ;if is less reverve the velocity in Y
 
-		
-		
-		move_ball_vertically:
-;		move the ball vertically
-			mov ax,ball_velocity_y
-			add ball_y,ax 					
-		
-;       check if the ball has passed the top boundarie	
-;		if is colliding, reverse the velocity in y
-		mov ax,ball_y
-		cmp ax,window_bounds					;ball_x is compared with the top boundarie of the screen			
-		jl neg_velocity_midpoint						;if it is less, reverse the velocity in y
-	
-;       check if the ball has passed the bottom boundarie	
-;		if is colliding, reverse the velocity in y
-		mov ax,window_height
-		sub ax, ball_size
-		sub ax, window_bounds
-		cmp ball_y,ax							;ball_y is compared with the bottom boundarie of the screen
-		jg neg_velocity_y		   				;if it is greater, reverse the velocity in y
-;       check if the ball is colliding with the right paddle
-				
-		;THE CONDITIONS FOR TWO BOXES COLLIDING:   				 maxX1 > minX2 && minX1 < maxX2 $&& maxY1 > minY2 && minY1 < maxY2
-		;TRANSLATE THE CONDITIONS TO THE CODE'S RIGHT VARIBLES:   ball_x + ball_size > paddle_right_x && ball_X < paddle_right_x + paddle_width 
-		;TRANSLATE THE CONDITIONS TO THE CODE'S RIGHT VARIBLES:   && ball_y + ball_size > paddle_right_y && ball_y < paddle_right_y + paddle_height
-			
-;		ball_x + ball_size > paddle_right_x		
-		mov ax,ball_x
-		add ax,ball_size
-		cmp paddle_right_x,ax				
-		jng check_collision_with_left_paddle  	;if there's no collision check for the left paddle collision
-		
-;		ball_X < paddle_right_x + paddle_width
-		mov ax, paddle_right_x
-		add ax, paddle_width
-		cmp ball_x,ax
-		jnl check_collision_with_left_paddle	;if there's no collision check for the left paddle collision
-		
-;       ball_y + ball_size > paddle_right_y
-		mov ax,ball_y
-		add ax,ball_size
-		cmp paddle_right_y,ax
-		jng check_collision_with_left_paddle	;if there's no collision check for the left paddle collision
-		
-;		ball_y < paddle_right_y + paddle_height
-		mov ax,paddle_right_y
-		add ax,paddle_height
-		cmp ball_y,ax
-		jnl check_collision_with_left_paddle	;if there's no collision check for the left paddle collision	
+;       Check if the ball has passed the bottom boundarie (BALL_Y > WINDOW_HEIGHT - BALL_SIZE - WINDOW_BOUNDS)
+;       If is colliding, reverse the velocity in Y      
+        MOV AX,WINDOW_HEIGHT    
+        SUB AX,BALL_SIZE
+        SUB AX,WINDOW_BOUNDS
+        CMP BALL_Y,AX                    ;BALL_Y is compared with the bottom boundarie of the screen (BALL_Y > WINDOW_HEIGHT - BALL_SIZE - WINDOW_BOUNDS)
+        JG NEG_VELOCITY_Y                ;if is greater reverve the velocity in Y
+        
+;       Check if the ball is colliding with the right paddle
+        ; maxx1 > minx2 && minx1 < maxx2 && maxy1 > miny2 && miny1 < maxy2
+        ; BALL_X + BALL_SIZE > PADDLE_RIGHT_X && BALL_X < PADDLE_RIGHT_X + PADDLE_WIDTH 
+        ; && BALL_Y + BALL_SIZE > PADDLE_RIGHT_Y && BALL_Y < PADDLE_RIGHT_Y + PADDLE_HEIGHT
+        
+        MOV AX,BALL_X
+        ADD AX,BALL_SIZE
+        CMP AX,PADDLE_RIGHT_X
+        JNG CHECK_COLLISION_WITH_LEFT_PADDLE  ;if there's no collision check for the left paddle collisions
+        
+        MOV AX,PADDLE_RIGHT_X
+        ADD AX,PADDLE_WIDTH
+        CMP BALL_X,AX
+        JNL CHECK_COLLISION_WITH_LEFT_PADDLE  ;if there's no collision check for the left paddle collisions
+        
+        MOV AX,BALL_Y
+        ADD AX,BALL_SIZE
+        CMP AX,PADDLE_RIGHT_Y
+        JNG CHECK_COLLISION_WITH_LEFT_PADDLE  ;if there's no collision check for the left paddle collisions
+        
+        MOV AX,PADDLE_RIGHT_Y
+        ADD AX,PADDLE_HEIGHT
+        CMP BALL_Y,AX
+        JNL CHECK_COLLISION_WITH_LEFT_PADDLE  ;if there's no collision check for the left paddle collisions
+        
+;       If it reaches this point, the ball is colliding with the right paddle
 
-;		if it reaches this point, the ball is colliding with the right paddle
-		
-		jmp neg_velocity_x
-		neg_velocity_midpoint:
-			jmp neg_velocity_y
-		
-;       check if the ball is colliding with the left paddle 
-		check_collision_with_left_paddle:
-		
-		;THE CONDITIONS FOR TWO BOXES COLLIDING:					maxX1 > minX2 && minX1 < maxX2 $&& maxY1 > minY2 && minY1 < maxY2
-		;TRANSLATE THE CONDITIONS TO THE CODE'S RIGHT VARIBLES:		ball_x + ball_size > paddle_left_x && ball_X < paddle_left_x + paddle_width 
-		;TRANSLATE THE CONDITIONS TO THE CODE'S RIGHT VARIBLES:		&& ball_y + ball_size > paddle_left_y && ball_y < paddle_left_y + paddle_height
+        JMP NEG_VELOCITY_X
 
-;		ball_x + ball_size > paddle_left_x
-		mov ax,ball_X
-		add ax,ball_size
-		cmp paddle_left_x,ax
-		jng exit_mov_ball						;if there's no collision the ball is not colliding with both paddles -> exit this proc
-;		ball_X < paddle_left_x + paddle_width 
-		mov ax,paddle_left_x
-		add ax,paddle_width
-		cmp ball_x,ax							
-		jnl exit_mov_ball						;if there's no collision the ball is not colliding with both paddles -> exit this proc
-;		ball_y + ball_size > paddle_left_y
-		mov ax,ball_y
-		add ax,ball_size
-		cmp paddle_left_y,ax
-		jng exit_mov_ball						;if there's no collision the ball is not colliding with both paddles -> exit this proc
-;		ball_y < paddle_left_y + paddle_height
-		mov ax,paddle_left_y
-		add ax,paddle_height
-		cmp ball_y,ax
-		jng exit_mov_ball						;if there's no collision the ball is not colliding with both paddles -> exit this proc
+;       Check if the ball is colliding with the left paddle
+        CHECK_COLLISION_WITH_LEFT_PADDLE:
+        ; maxx1 > minx2 && minx1 < maxx2 && maxy1 > miny2 && miny1 < maxy2
+        ; BALL_X + BALL_SIZE > PADDLE_LEFT_X && BALL_X < PADDLE_LEFT_X + PADDLE_WIDTH 
+        ; && BALL_Y + BALL_SIZE > PADDLE_LEFT_Y && BALL_Y < PADDLE_LEFT_Y + PADDLE_HEIGHT
+        
+        MOV AX,BALL_X
+        ADD AX,BALL_SIZE
+        CMP AX,PADDLE_LEFT_X
+        JNG EXIT_COLLISION_CHECK  ;if there's no collision exit procedure
+        
+        MOV AX,PADDLE_LEFT_X
+        ADD AX,PADDLE_WIDTH
+        CMP BALL_X,AX
+        JNL EXIT_COLLISION_CHECK  ;if there's no collision exit procedure
+        
+        MOV AX,BALL_Y
+        ADD AX,BALL_SIZE
+        CMP AX,PADDLE_LEFT_Y
+        JNG EXIT_COLLISION_CHECK  ;if there's no collision exit procedure
+        
+        MOV AX,PADDLE_LEFT_Y
+        ADD AX,PADDLE_HEIGHT
+        CMP BALL_Y,AX
+        JNL EXIT_COLLISION_CHECK  ;if there's no collision exit procedure
+        
+;       If it reaches this point, the ball is colliding with the left paddle    
 
-; 		if it reaches this point, the ball is colliding with the left paddle		
-		jmp neg_velocity_x
-		
-        exit_mov_ball:
-			ret
-		neg_velocity_y:
-			neg ball_velocity_y 					;reverse the sign of ball_velocity_y (+/-)
-			ret
-		neg_velocity_x:
-			neg ball_velocity_x   					;reverse the ball horizontal velocity
-			ret 									;exit the proc 
-    move_ball endp
+        JMP NEG_VELOCITY_X
+        
+        NEG_VELOCITY_Y:
+            NEG BALL_VELOCITY_Y   ;reverse the velocity in Y of the ball (BALL_VELOCITY_Y = - BALL_VELOCITY_Y)
+            RET
+        NEG_VELOCITY_X:
+            NEG BALL_VELOCITY_X              ;reverses the horizontal velocity of the ball
+            RET                              
+            
+        EXIT_COLLISION_CHECK:
+            RET
+    MOVE_BALL ENDP
 	
 	move_paddles proc near						;process the movement of the paddles
 	
@@ -331,9 +323,9 @@ code segment para 'code'
 ;			when the paddle is controlled by the user pressing the keys	
 			CHECK_FOR_KEYS:
 				;if it is 'o' or 'O' move up
-				cmp al,6fh  ;'o'
+				cmp al,6Fh  ;'o'
 				je move_right_paddle_up
-				cmp al,4fh  ;'O'
+				cmp al,4Fh  ;'O'
 				je move_right_paddle_up
 		
 				;if it is 'l' or 'L' move down
@@ -364,31 +356,31 @@ code segment para 'code'
 			
 			move_right_paddle_up:
 				mov ax, paddle_velocity
-				sub paddle_left_y,ax
+				sub paddle_right_y,ax
 			
 				mov ax,window_bounds
-				cmp paddle_left_y,ax
+				cmp paddle_right_y,ax
 				jl fix_paddle_right_top_position
 				jmp exit_paddle_movement
 			
 			
 				fix_paddle_right_top_position:
 					mov ax,window_bounds
-					mov paddle_left_y,ax
+					mov paddle_right_y,ax
 					jmp exit_paddle_movement
 			
 			move_right_paddle_down:
 				mov ax, paddle_velocity
-				add paddle_left_y,ax
+				add paddle_right_y,ax
 				mov ax,window_height
 				sub ax,window_bounds
 				sub ax,paddle_height
-				cmp paddle_left_y,ax
+				cmp paddle_right_y,ax
 				jg fix_paddle_right_bottom_position
 				jmp exit_paddle_movement
 			
 				fix_paddle_right_bottom_position:
-					mov paddle_left_y,ax
+					mov paddle_right_y,ax
 					jmp exit_paddle_movement
 	
 		exit_paddle_movement:
@@ -451,7 +443,7 @@ code segment para 'code'
             cmp ax, paddle_width
             jng draw_paddle_left_horizontal
 			
-			mov cx,ball_x 							;the cx register goes back to the initial column
+			mov cx,paddle_left_x  	   			    ;the cx register goes back to the initial column
             inc dx        							;advance one line
             mov ax, dx    							;DX - paddle_left_y > paddle_height (go to next line if false, exit if true)
             sub ax,paddle_left_y
@@ -459,7 +451,8 @@ code segment para 'code'
             jng draw_paddle_left_horizontal
 		
 		
-		
+		MOV CX,paddle_right_x            ;set the initial column (X)
+        MOV DX,paddle_right_y            ;set the initial line (Y)
 		
 		draw_paddle_right_horizontal:
 			mov ah,0ch 								;set the configuration to writing a pixel
@@ -473,7 +466,7 @@ code segment para 'code'
             cmp ax, paddle_width
             jng draw_paddle_right_horizontal
 			
-			mov cx,ball_x 							;the cx register goes back to the initial column
+			mov cx,paddle_right_x 					;the cx register goes back to the initial column
             inc dx        							;advance one line
             mov ax, dx    							;DX - paddle_right_y > paddle_height (go to next line if false, exit if true)
             sub ax,paddle_right_y
@@ -502,7 +495,7 @@ code segment para 'code'
 		mov ah,02h								;set cursor position	
 		mov bh,00h								;set page number
 		mov dh,04h								;set row
-		mov dl,0fh								;set column
+		mov dl,1fh								;set column
 		int 10h									
 		
 		mov ah,09h								;write string to standard output
@@ -692,7 +685,7 @@ code segment para 'code'
 		START_SINGLEPLAYER:
 			MOV CURRENT_SCENE, 01h
 			MOV GAME_ACTIVE, 01h
-			MOV AI_controlled, 00h
+			MOV AI_controlled, 01h
 			RET
 		
 		START_MULTIPLAYER:
